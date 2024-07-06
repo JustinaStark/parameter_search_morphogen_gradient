@@ -66,6 +66,10 @@ void finite_differences(const GRID_TYPE & grid,
 	for(size_t neighbor_index = 0; neighbor_index < STENCIL_SIZE; ++neighbor_index)
 	{
 		grid.template getProp<DERIVATIVE>(key) += coefficients[neighbor_index] * grid.template get<FIELD>(key.move(dimension, stencil[neighbor_index]));
+		std::cout << "coefficients[neighbor_index] = " << coefficients[neighbor_index] << std::endl;
+		std::cout << "grid.template get<FIELD>(key.move(dimension, stencil[neighbor_index])) = " << grid.template get<FIELD>(key.move(dimension, stencil[neighbor_index])) << std::endl;
+		std::cout << "stencil[neighbor_index] = " << stencil[neighbor_index] << std::endl;
+		std::cout << "---------------------------------------------------------------" << std::endl;
 	}
 	grid.template getProp<DERIVATIVE>(key) /= divisor;
 }
@@ -77,8 +81,10 @@ void finite_differences_2nd_derivative_no_flux_BCs(const GRID_TYPE & grid,
 {
 	const size_t stencil_size = 3;
 	const int stencil [stencil_size] = {-1, 0, 1};
-	double coefficients [stencil_size] = {1, -2, 1};
+	// u''_i = (u_i-1 - 2u_i + u_i+1) / h^2 
 	const double divisor = grid.spacing(dimension) * grid.spacing(dimension);
+	
+	double coefficients [stencil_size];
 
 	// Compute Laplacian with no-flux BCs at the interfaces
 	auto dom = grid.getDomainIterator();
@@ -92,14 +98,22 @@ void finite_differences_2nd_derivative_no_flux_BCs(const GRID_TYPE & grid,
 			if(grid.template getProp<PHI_SDF>(key.move(x, 1)) > grid.template getProp<PHI_SDF>(key))
 			{
 				coefficients[0] = 0;
-				coefficients[1] = 1;
+				coefficients[1] = -1;
+				coefficients[2] = 1;
 			}
 			// If right boundary
 			if(grid.template getProp<PHI_SDF>(key.move(x, -1)) > grid.template getProp<PHI_SDF>(key))
 			{
-				coefficients[1] = 1;
+				coefficients[0] = 1;
+				coefficients[1] = -1;
 				coefficients[2] = 0;
 			}
+		}
+		else // for the inside points use normal central finite difference
+		{
+			coefficients[0] = 1;
+			coefficients[1] = -2;
+			coefficients[2] = 1;
 		}
 		
 		finite_differences<FIELD, LAP_U, stencil_size>(grid, key, stencil, coefficients, divisor, dimension);
@@ -159,7 +173,7 @@ int main(int argc, char* argv[])
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Create grid of size N
-	size_t N = 64;
+	size_t N = 9;
 	const size_t sz[dims] = {N};
 	const double Lx_low = -1.0;
 	const double Lx_up  = 1.0;
@@ -222,6 +236,8 @@ int main(int argc, char* argv[])
 	
 	while(iter < max_iter)
 	{
+		std::cout << "-----------------------------iteration " << iter << "----------------------------------" << std::endl;
+
 		// Compute laplacian from UN or UNPLUS1 in even or odd iteration, respectively
 		if(iter % 2 == 0)
 		{
