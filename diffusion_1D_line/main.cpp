@@ -199,15 +199,17 @@ int main(int argc, char* argv[])
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Parameters for the reaction-diffusion process (Source-Diffusion-Sink mechanism)
-	const size_t n_params_ksource = 2;
-	const size_t n_params_ksink   = 2;
-	const double diffusion_coefficient = 1.0; // diffusion constant um2/s
+	const size_t n_params_diffusion_coeff = 10;
+	const size_t n_params_ksource = 10;
+	const size_t n_params_ksink   = 10;
+
+	double diffusion_coefficient [n_params_diffusion_coeff]; // diffusion constant um2/s
 	double k_source [n_params_ksource]; // uM/s
 	double k_sink [n_params_ksink]; // 1/s
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Set current working directory, define output paths and create folders where output will be saved
 	std::string cwd                     = get_cwd();
-	const std::string path_output       = cwd + "/output_1D_SDD_D" + std::to_string(int(diffusion_coefficient));
+	const std::string path_output       = cwd + "/output_1D_SDD";
 	create_directory_if_not_exist(path_output);
 	create_directory_if_not_exist(path_output + "/gradients");
 
@@ -225,6 +227,11 @@ int main(int argc, char* argv[])
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Initialize k_source and k_sink parameter sets
+	for (int iter_params = 0; iter_params < n_params_diffusion_coeff; ++iter_params)
+	{
+		diffusion_coefficient[iter_params] = 1.0 * (double)iter_params;
+	}
+
 	for (int iter_params = 0; iter_params < n_params_ksource; ++iter_params)
 	{
 		k_source[iter_params] = 0.1 * (double)iter_params;
@@ -280,83 +287,90 @@ int main(int argc, char* argv[])
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Get the diffusion timestep that fulfills the stability condition
 	const double dx = g_dist.spacing(x), dy = g_dist.spacing(y); // if you want to know the grid spacing
-	const double dt = diffusion_time_step(g_dist, diffusion_coefficient);
+	const double dt = diffusion_time_step(g_dist, diffusion_coefficient[n_params_diffusion_coeff-1]);
 	std::cout << "dx = " << dx << ", dt = " << dt << std::endl;
 	
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Diffusion using a forward-time central-space scheme
 	// const double tmax = 10 * 60; // final time in seconds
-	const int max_iter = 1e6; // max iteration
-	const int interval_write = (int)(max_iter / 1); // set how many frames should be saved as vtk
+	const double t_max = 10 * 60; // max time
+	const int max_iter = (int)std::round(t_max / dt);
+	// const int interval_write = (int)(max_iter / 1); // set how many frames should be saved as vtk
 	
 	double b_low = 0; // considered as embryo boundary
 	
 	int parameter_set_row = 0;
-	for(int iter_ksource = 0; iter_ksource < n_params_ksource; ++iter_ksource)
+	for(int iter_diff_coeff = 0; iter_diff_coeff < n_params_diffusion_coeff; ++iter_diff_coeff)
 	{
-		auto _k_source = k_source[iter_ksource];
+		const auto _diffusion_coefficient = diffusion_coefficient[iter_diff_coeff];
 
-		for(int iter_ksink = 0; iter_ksink < n_params_ksink; ++iter_ksink)
+		for(int iter_ksource = 0; iter_ksource < n_params_ksource; ++iter_ksource)
 		{
-			auto _k_sink = k_sink[iter_ksink];
+			const auto _k_source = k_source[iter_ksource];
 
-			// write parameters to csv file, one row for each set
-			std::ofstream file_out;
-			file_out.open(path_to_params, std::ios_base::app); // append instead of overwrite	
-			file_out << to_string_with_precision(diffusion_coefficient, 6) 
-					 << ',' << to_string_with_precision(_k_source, 6)
-					 << ',' <<   to_string_with_precision(_k_sink, 6)
-					 << std::endl;
-
-			file_out.close();
-
-			// Compute morphogen gradient
-			init_grid_and_ghost<U1_N>(g_dist, 0); // Initialize grid and ghost layer with 0
-			init_grid_and_ghost<U1_NPLUS1>(g_dist, 0); // Initialize grid and ghost layer with 0
-			double t = 0;
-			int iter = 0; // initial iteration
-			while(iter < max_iter)
+			for(int iter_ksink = 0; iter_ksink < n_params_ksink; ++iter_ksink)
 			{
-				// std::cout << "-----------------------------iteration " << iter << "----------------------------------" << std::endl;
+				const auto _k_sink = k_sink[iter_ksink];
 
-				// Compute laplacian from UN or UNPLUS1 in even or odd iteration, respectively
-				if(iter % 2 == 0)
+				// write parameters to csv file, one row for each set
+				std::ofstream file_out;
+				file_out.open(path_to_params, std::ios_base::app); // append instead of overwrite	
+				file_out << to_string_with_precision(_diffusion_coefficient, 6) 
+						 << ',' << to_string_with_precision(_k_source, 6)
+						 << ',' <<   to_string_with_precision(_k_sink, 6)
+						 << std::endl;
+
+				file_out.close();
+
+				// Compute morphogen gradient
+				init_grid_and_ghost<U1_N>(g_dist, 0); // Initialize grid and ghost layer with 0
+				init_grid_and_ghost<U1_NPLUS1>(g_dist, 0); // Initialize grid and ghost layer with 0
+				double t = 0;
+				int iter = 0; // initial iteration
+				while(iter < max_iter)
 				{
-					// Compute laplacian from UN in even iteration
-					finite_differences_2nd_derivative_no_flux_BCs<U1_N, LAP_U, PHI_SDF>(g_dist, x, b_low);
-					// Loop over grid and run reaction-diffusion using the concentration laplacian computed above
-					source_diffusion_sink<U1_N, U1_NPLUS1, IS_SOURCE, LAP_U>(g_dist, _k_source, _k_sink, diffusion_coefficient, dt);
-				}
-				else
-				{	
-					// Compute laplacian from UNPLUS1 in odd iteration
-					finite_differences_2nd_derivative_no_flux_BCs<U1_NPLUS1, LAP_U, PHI_SDF>(g_dist, x, b_low);
-					// Loop over grid and run reaction-diffusion using the concentration laplacian computed above
-					source_diffusion_sink<U1_NPLUS1, U1_N, IS_SOURCE, LAP_U>(g_dist, _k_source, _k_sink, diffusion_coefficient, dt);
-				}
-				
-				
-				// Write grid to vtk
-				if (iter % interval_write == 0)
-				{
-					// g_dist.write_frame(path_output + "/grid_diffuse_withNoFlux", iter, FORMAT_BINARY);
-					// std::cout << "Diffusion time :" << t << std::endl;
+					// std::cout << "-----------------------------iteration " << iter << "----------------------------------" << std::endl;
+
+					// Compute laplacian from UN or UNPLUS1 in even or odd iteration, respectively
+					if(iter % 2 == 0)
+					{
+						// Compute laplacian from UN in even iteration
+						finite_differences_2nd_derivative_no_flux_BCs<U1_N, LAP_U, PHI_SDF>(g_dist, x, b_low);
+						// Loop over grid and run reaction-diffusion using the concentration laplacian computed above
+						source_diffusion_sink<U1_N, U1_NPLUS1, IS_SOURCE, LAP_U>(g_dist, _k_source, _k_sink, _diffusion_coefficient, dt);
+					}
+					else
+					{	
+						// Compute laplacian from UNPLUS1 in odd iteration
+						finite_differences_2nd_derivative_no_flux_BCs<U1_NPLUS1, LAP_U, PHI_SDF>(g_dist, x, b_low);
+						// Loop over grid and run reaction-diffusion using the concentration laplacian computed above
+						source_diffusion_sink<U1_NPLUS1, U1_N, IS_SOURCE, LAP_U>(g_dist, _k_source, _k_sink, _diffusion_coefficient, dt);
+					}
 					
-					save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(parameter_set_row) + ".csv");
-					// Monitor total concentration
-					// monitor_total_concentration<U1_N>(g_dist, t, iter, path_output, "total_conc.csv");
+					#if 0
+					// Write grid to vtk
+					if (iter % interval_write == 0)
+					{
+						// g_dist.write_frame(path_output + "/grid_diffuse_withNoFlux", iter, FORMAT_BINARY);
+						// std::cout << "Diffusion time :" << t << std::endl;
+						
+						save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(parameter_set_row) + ".csv");
+						// Monitor total concentration
+						// monitor_total_concentration<U1_N>(g_dist, t, iter, path_output, "total_conc.csv");
 
+					}
+					#endif
+
+					// Update U1_N
+					// copy_gridTogrid<U1_NPLUS1, U1_N>(g_dist, g_dist);
+					
+					iter += 1;
+					t += dt;
 				}
-				
-
-				// Update U1_N
-				// copy_gridTogrid<U1_NPLUS1, U1_N>(g_dist, g_dist);
-				
-				iter += 1;
-				t += dt;
-			}
-			parameter_set_row += 1;
+				save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(parameter_set_row) + ".csv");
+				parameter_set_row += 1;
+			}	
 		}
 	}
 
