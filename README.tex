@@ -38,7 +38,7 @@ with $\bm n$ as the normal vector on $\partial \Omega$. We discretize $\Omega$ b
     \Delta t = \frac{1}{8  D}  \Delta x^{2}\, .
 \end{equation}
 %
-We solve Eq.~\eqref{eq:SDS_1D_PDE}--\eqref{eq:diffusion_stability_condition} until Eq.~\eqref{eq:SDS_1D_PDE} reaches a steady-state. This steady-state morphogen concentration profile can be flat, exponential, or step-wise depending on the parameters $k_{\rm{source}}$, $k_{\rm{sink}}$, and $D$. The goal is to generate a model that predicts a parameter set given an input gradient. To train this model, we produce simulated training data by solving Eq.~\eqref{eq:SDS_1D_PDE} until steady-state for different parameter sets.
+We solve Eq.~\eqref{eq:SDS_1D_PDE}--\eqref{eq:diffusion_stability_condition} using first-order forward-time central-space finite differences until Eq.~\eqref{eq:SDS_1D_PDE} reaches a steady-state. This steady-state morphogen concentration profile can be flat, exponential, or step-wise depending on the parameters $k_{\rm{source}}$, $k_{\rm{sink}}$, and $D$. The goal is to generate a model that predicts a parameter set given an input gradient. To train this model, we produce simulated training data by solving Eq.~\eqref{eq:SDS_1D_PDE} until steady-state for different parameter sets.
 
 The output folders contain a parameters.csv file, where the first row defines the parameter type of the respective column, and each row below contains a set of parameters with index $i$. The corresponding gradients folder contains gradient\_$i$.csv files, each corresponding to one row $i$ of the parameters.csv file. 
 
