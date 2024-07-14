@@ -1,7 +1,8 @@
 \documentclass[11pt]{article}
 \usepackage{physics}
 \usepackage{bm}
-
+\usepackage[font=scriptsize]{caption}
+\usepackage{graphicx}
 
 \begin{document}
 This repository contains training data for an ML-based parameter optimization for modeling morphogen gradient formation by a source-diffusion-sink (SDS) mechanism~\cite{Yu2009}, as described by the following one-dimensional (1D) reaction-diffusion partial differential equation:
@@ -21,7 +22,7 @@ $f_{\rm{source}}$ depends on the location as only a group of cells produce the m
     \end{cases}  
 \end{equation}
 %
-with source width $w_{\rm{source}} = 0.3 L$ in a 1D diffusion domain $\Omega = \{x | 0 \leq x \leq L\} $ of length $L=2.0$. We consider the scenario of a zero morphogen concentration in $\Omega$ as initial condition
+with source width $w_{\rm{source}} = 0.3 L$ in a 1D diffusion domain $\Omega = \{x | -\frac{L}{2} \leq x \leq \frac{L}{2}\} $ of length $L=2.0$. We consider the scenario of a zero morphogen concentration in $\Omega$ as initial condition
 %
 \begin{equation}\label{eq:IC}
 	c(x,0) = 0, \quad x \in \Omega
@@ -40,7 +41,18 @@ with $\bm n$ as the normal vector on $\partial \Omega$. We discretize $\Omega$ b
 %
 We solve Eq.~\eqref{eq:SDS_1D_PDE}--\eqref{eq:diffusion_stability_condition} using first-order forward-time central-space finite differences until Eq.~\eqref{eq:SDS_1D_PDE} reaches a steady-state. This steady-state morphogen concentration profile can be flat, exponential, or step-wise depending on the parameters $k_{\rm{source}}$, $k_{\rm{sink}}$, and $D$. The goal is to generate a model that predicts a parameter set given an input gradient. To train this model, we produce simulated training data by solving Eq.~\eqref{eq:SDS_1D_PDE} until steady-state for different parameter sets.
 
-The output folders contain a parameters.csv file, where the first row defines the parameter type of the respective column, and each row below contains a set of parameters with index $i$. The corresponding gradients folder contains gradient\_$i$.csv files, each corresponding to one row $i$ of the parameters.csv file. 
+The output folders contain a parameters.csv file, where the first row defines the parameter type of the respective column, and each row below contains a set of parameters with index $i$ (see Fig.~\ref{fig:description_csv_files}). The corresponding gradients folder contains gradient\_$i$.csv files, each corresponding to one row $i$ of the parameters.csv file. The columns of gradient\_$i$.csv contain the concentration value at each grid point and each row contains one iteration, as shown in Fig.~\ref{fig:description_csv_files}.
+
+\begin{figure}[htbp!]
+\footnotesize
+    \centering
+    \captionsetup{width=1.0 \textwidth}
+    \includegraphics[width=1.0\textwidth]{./description_csv_files.pdf}
+    \caption{}
+\label{fig:description_csv_files}
+\end{figure}
+%\FloatBarrier
+
 
 Each gradient\_$i$.csv file contains two columns: the first containing $x$, the second containing the steady-state concentration field $c(x, t_{\rm{max}})$.
 
