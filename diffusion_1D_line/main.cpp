@@ -178,22 +178,24 @@ void save_1D_gradient_to_csv(
 
 		// auto x_coord = grid.getPos(key).get(0);
 		
-		file_out << lin_grid_iterator * grid.spacing(0)
-				 << ',' << to_string_with_precision(grid.template get<FIELD>(key), precision) 
-				 << std::endl;
+		file_out
+	//	<< lin_grid_iterator * grid.spacing(0)
+				 << to_string_with_precision(grid.template get<FIELD>(key), precision) 
+				 << ',';
 			
 
 		++dom;
 		lin_grid_iterator +=1;
 		
 	}
+	file_out << std::endl;
 	file_out.close();
 }
 
 
 int main(int argc, char* argv[])
 {
-	const int param_group_id            = 3;
+	const int param_group_id            = 0;
 
 	// Initialize library.
 	openfpm_init(&argc, &argv);
@@ -211,12 +213,16 @@ int main(int argc, char* argv[])
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Set current working directory, define output paths and create folders where output will be saved
 	std::string cwd                     = get_cwd();
-	const std::string path_output       = cwd + "/output_1D_SDD_" + std::to_string(param_group_id);
+	const std::string path_output       = cwd + "/output_1D_SDD_over_time_" + std::to_string(param_group_id);
 	create_directory_if_not_exist(path_output);
 	create_directory_if_not_exist(path_output + "/gradients");
 
 	const std::string path_to_params    = path_output + "/parameters.csv";
 	create_file_if_not_exist(path_to_params);
+
+	const std::string path_to_x_coord    = path_output + "/x_coord.csv"; 
+	create_file_if_not_exist(path_to_x_coord);
+
 	// Initialize first row of parameter csv file
 	std::ofstream file_out;
 	file_out.open(path_to_params, std::ios_base::app); // append instead of overwrite	
@@ -255,8 +261,7 @@ int main(int argc, char* argv[])
 	typedef grid_dist_id<dims, double, props> grid_type;
 	grid_type g_dist(sz, box, ghost);
 	g_dist.setPropNames({"PHI_SDF", "U1_N", "U1_NPLUS1", "LAP_U", "IS_SOURCE"});
-	
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Initialize level-set function with analytic signed distance function at each grid point
@@ -278,6 +283,10 @@ int main(int argc, char* argv[])
 			// FOR DEBUGGING -> CHECK IF TOTAL MASS CONSERVED
 			// g_dist.template getProp<U1_N>(key) = 0.1;
 		}
+		
+		std::ofstream file_x_coord_out;
+		file_x_coord_out.open(path_to_x_coord, std::ios_base::app);
+		file_x_coord_out << g_dist.getPos(key).get(x) << std::endl;
 		
 		++dom;
 	}
@@ -322,8 +331,8 @@ int main(int argc, char* argv[])
 				const auto _k_sink = k_sink[iter_ksink];
 				
 				// Create folder for output gradients of this parameter set
-				const std::string path_output_param = path_output + "/gradients/" + "param_set_" + std::to_string(id_param_row);
-				create_directory_if_not_exist(path_output_param);
+				// const std::string path_output_param = path_output + "/gradients/" + "param_set_" + std::to_string(id_param_row);
+				// create_directory_if_not_exist(path_output_param);
 
 				// write parameters to csv file, one row for each set
 				std::ofstream file_out;
@@ -376,7 +385,7 @@ int main(int argc, char* argv[])
 
 					// Update U1_N
 					// copy_gridTogrid<U1_NPLUS1, U1_N>(g_dist, g_dist);
-					save_1D_gradient_to_csv<U1_N>(g_dist,  path_output_param, "iteration_" + std::to_string(iter)  + ".csv");
+					save_1D_gradient_to_csv<U1_N>(g_dist,  path_output + "/gradients", "gradient_" + std::to_string(id_param_row) + ".csv");
 	
 					iter += 1;
 					t += dt;
