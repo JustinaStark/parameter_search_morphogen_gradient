@@ -193,6 +193,8 @@ void save_1D_gradient_to_csv(
 
 int main(int argc, char* argv[])
 {
+	const int param_group_id            = 3;
+
 	// Initialize library.
 	openfpm_init(&argc, &argv);
 	auto & v_cl = create_vcluster();
@@ -209,7 +211,7 @@ int main(int argc, char* argv[])
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Set current working directory, define output paths and create folders where output will be saved
 	std::string cwd                     = get_cwd();
-	const std::string path_output       = cwd + "/output_1D_SDD";
+	const std::string path_output       = cwd + "/output_1D_SDD_" + std::to_string(param_group_id);
 	create_directory_if_not_exist(path_output);
 	create_directory_if_not_exist(path_output + "/gradients");
 
@@ -229,17 +231,17 @@ int main(int argc, char* argv[])
 	// Initialize k_source and k_sink parameter sets
 	for (int iter_params = 0; iter_params < n_params_diffusion_coeff; ++iter_params)
 	{
-		diffusion_coefficient[iter_params] = 1.0 * (double)iter_params;
+		diffusion_coefficient[iter_params] = 1.0 + 1.0 * (double)iter_params;
 	}
 
 	for (int iter_params = 0; iter_params < n_params_ksource; ++iter_params)
 	{
-		k_source[iter_params] = 0.1 * (double)iter_params;
+		k_source[iter_params] = 0.1 * (1.0 + (double)iter_params) * (1.0 + (double)iter_params);
 	}
 
 	for (int iter_params = 0; iter_params < n_params_ksink; ++iter_params)
 	{
-		k_sink[iter_params] = 0.1 * (double)iter_params;
+		k_sink[iter_params] = 0.1 * (double)iter_params * (double)iter_params;
 	}
 		
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -294,24 +296,34 @@ int main(int argc, char* argv[])
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Diffusion using a forward-time central-space scheme
 	// const double tmax = 10 * 60; // final time in seconds
-	const double t_max = 10 * 60; // max time
-	const int max_iter = (int)std::round(t_max / dt);
+	// const double t_max = 10 * 60; // max time
+	// const int max_iter = (int)std::round(t_max / dt);
+	const int max_iter = 1e5;
+	std::cout << "max iteration  = " << max_iter << std::endl;
+	std::cout << "max time = " << dt * max_iter << std::endl;
+
 	// const int interval_write = (int)(max_iter / 1); // set how many frames should be saved as vtk
 	
 	double b_low = 0; // considered as embryo boundary
 	
-	int parameter_set_row = 0;
-	for(int iter_diff_coeff = 0; iter_diff_coeff < n_params_diffusion_coeff; ++iter_diff_coeff)
+	int id_param_row = 0;
+	// for(int iter_diff_coeff = 0; iter_diff_coeff < n_params_diffusion_coeff; ++iter_diff_coeff)
+	int iter_diff_coeff = 0;
 	{
 		const auto _diffusion_coefficient = diffusion_coefficient[iter_diff_coeff];
 
-		for(int iter_ksource = 0; iter_ksource < n_params_ksource; ++iter_ksource)
+		// for(int iter_ksource = 0; iter_ksource < n_params_ksource; ++iter_ksource)
+		int iter_ksource = param_group_id;
 		{
 			const auto _k_source = k_source[iter_ksource];
 
 			for(int iter_ksink = 0; iter_ksink < n_params_ksink; ++iter_ksink)
 			{
 				const auto _k_sink = k_sink[iter_ksink];
+				
+				// Create folder for output gradients of this parameter set
+				const std::string path_output_param = path_output + "/gradients/" + "param_set_" + std::to_string(id_param_row);
+				create_directory_if_not_exist(path_output_param);
 
 				// write parameters to csv file, one row for each set
 				std::ofstream file_out;
@@ -355,7 +367,7 @@ int main(int argc, char* argv[])
 						// g_dist.write_frame(path_output + "/grid_diffuse_withNoFlux", iter, FORMAT_BINARY);
 						// std::cout << "Diffusion time :" << t << std::endl;
 						
-						save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(parameter_set_row) + ".csv");
+						save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(id_param_row) + ".csv");
 						// Monitor total concentration
 						// monitor_total_concentration<U1_N>(g_dist, t, iter, path_output, "total_conc.csv");
 
@@ -364,12 +376,13 @@ int main(int argc, char* argv[])
 
 					// Update U1_N
 					// copy_gridTogrid<U1_NPLUS1, U1_N>(g_dist, g_dist);
-					
+					save_1D_gradient_to_csv<U1_N>(g_dist,  path_output_param, "iteration_" + std::to_string(iter)  + ".csv");
+	
 					iter += 1;
 					t += dt;
 				}
-				save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(parameter_set_row) + ".csv");
-				parameter_set_row += 1;
+				// save_1D_gradient_to_csv<U1_N>(g_dist, path_output + "/gradients", "gradient_" + std::to_string(id_param_row) + ".csv");
+				id_param_row += 1;
 			}	
 		}
 	}
