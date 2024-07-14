@@ -1,0 +1,19 @@
+gcc version 8.3.0 for x86_64 architecture loaded.
+cuda version 10.1.243 for x86_64 architecture loaded.
+--------------------------------------------------------------------------
+By default, for Open MPI 4.0 and later, infiniband ports on a device
+are not used by default.  The intent is to use UCX for these devices.
+You can override this policy by setting the btl_openib_allow_ib MCA parameter
+to true.
+
+  Local host:              c04n05
+  Local adapter:           mlx4_0
+  Local port:              1
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+WARNING: There was an error initializing an OpenFabrics device.
+
+  Local host:   c04n05
+  Local device: mlx4_0
+--------------------------------------------------------------------------
