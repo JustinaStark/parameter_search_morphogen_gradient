@@ -17,12 +17,12 @@ $f_{\rm{source}}$ depends on the location as only a group of cells produce the m
 \begin{equation}\label{eq:source}
 	f_{\rm{source}}(x) =
         \begin{cases}
-        k_{\rm{source}} \quad & \text{for} \quad  0 \le x \le w_{\rm{source}}  \\
-        0 & \rm{otherwise}\, ,
+        k_{\rm{source}} \quad & \text{for} \quad x | d_{\rm{margin}}(x) \le w_{\rm{source}}  \\
+        0 & \rm{otherwise}\, 
     \end{cases}  
 \end{equation}
 %
-with source width $w_{\rm{source}} = 0.3 L$ in a 1D diffusion domain $\Omega = \{x | -\frac{L}{2} \leq x \leq \frac{L}{2}\} $ of length $L=2.0$. We consider the scenario of a zero morphogen concentration in $\Omega$ as initial condition
+in a 1D diffusion domain $\Omega = \{x | -\frac{L}{2} \leq x \leq \frac{L}{2}\}$ of length $L=2.0$. The source is a region of width $w_{\rm{source}} = 0.3 L$ restricted to a distance $d_{\rm{margin}}(x) \le w_{\rm{source}}$ from the left margin. We consider the scenario of a zero morphogen concentration in $\Omega$ as initial condition
 %
 \begin{equation}\label{eq:IC}
 	c(x,0) = 0, \quad x \in \Omega
